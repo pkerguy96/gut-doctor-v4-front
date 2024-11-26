@@ -9,6 +9,7 @@ import {
   Paper,
   Select,
   SelectChangeEvent,
+  ListSubheader,
   Table,
   TableBody,
   TableCell,
@@ -21,7 +22,54 @@ import {
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import AddIcon from "@mui/icons-material/Add";
 import { useState } from "react";
-import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
+import Chip from "@mui/material/Chip";
+import OutlinedInput from "@mui/material/OutlinedInput";
+
+function $tempkate(opts: any) {
+  const { lang, dir, size, margin, css, page } = opts;
+  return `<!DOCTYPE html><html lang="${lang}"dir="${dir}"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible"content="IE=edge"/><meta name="viewport"content="width=device-width, initial-scale=1.0"/><style>@page{size:${size.page};margin:${margin}}#page{width:100%}#head{height:${size.head}}#foot{height:${size.foot}}</style>${css}</head><body><table id="page"><thead><tr><td><div id="head"></div></td></tr></thead><tbody><tr><td><main id="main">${page}</main></td></tr></tbody><tfoot><tr><td><div id=foot></div></td></tr></tfoot></table></body></html>`;
+}
+function Print(target: any, callback: Function = () => {}) {
+  const page = document.querySelector(target);
+
+  var iframe = document.createElement("iframe");
+  iframe.style.display = "none";
+  document.body.appendChild(iframe);
+  var iframeDoc = iframe.contentDocument || iframe?.contentWindow?.document;
+  iframeDoc?.open();
+  iframeDoc?.write(
+    $tempkate({
+      size: {
+        page: "A5",
+        head: "100px",
+        foot: "80px",
+      },
+      page: page.innerHTML,
+      margin: "10mm 10mm 10mm 10mm",
+      css: [
+        '<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">',
+      ],
+    })
+  );
+  iframeDoc?.close();
+  iframe.onload = function () {
+    iframe?.contentWindow?.print();
+    callback();
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 1000);
+  };
+}
+const ITEM_HEIGHT = 48;
+const ITEM_PADDING_TOP = 8;
+const MenuProps = {
+  PaperProps: {
+    style: {
+      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
+      width: 250,
+    },
+  },
+};
 
 const data = {
   échographie: [
@@ -59,11 +107,26 @@ const data = {
   ],
 };
 
+const printables = {
+  irm: ["Brain MRI", "Spine MRI", "Knee MRI"],
+  ausp: ["Abdominal Ultrasound", "Pelvic Ultrasound", "Chest Ultrasound"],
+  ecographie: [
+    "Cardiac Echography",
+    "Thyroid Echography",
+    "Vascular Echography",
+  ],
+};
+
 const RadioPage = () => {
   const [radiology, setRadiology] = useState("");
+  const [printable, setPrintable] = useState([]);
 
   const radiologyChange = (event: SelectChangeEvent) => {
     setRadiology(event.target.value);
+  };
+
+  const printableChange = (event: SelectChangeEvent) => {
+    setPrintable(event.target.value);
   };
 
   const [fields, setFields] = useState([]);
@@ -101,6 +164,16 @@ const RadioPage = () => {
     setFields(newRows);
   };
 
+  const submit = (e) => {
+    e.preventDefault();
+    console.log("====================================");
+    console.log(fields, printable);
+    console.log("====================================");
+    Print("#page", () => {});
+  };
+
+  const FormattedDate = new Date().toISOString().split("T")[0].split("-");
+
   return (
     <Paper className="!p-6 w-full flex flex-col gap-4">
       <Box
@@ -108,15 +181,59 @@ const RadioPage = () => {
         noValidate
         autoComplete="off"
         /* onSubmit={handleSubmit(onSubmit)} */
+        onSubmit={submit}
         className="flex flex-col gap-4"
       >
-        <Box className="lg:col-span-3 flex justify-between">
-          <Typography id="modal-modal-title" variant="h6" component="h2">
+        <Box className="flex justify-center mb-4">
+          <Typography
+            id="modal-modal-title"
+            component="h2"
+            className="text-center !text-2xl font-bold"
+          >
             Radiographie demandée
           </Typography>
         </Box>
         <Box className="flex flex-col items-center gap-6 flex-wrap">
-          <Box className="w-full md:w-2/3 flex flex-wrap gap-4">
+          <Box className="w-full flex flex-wrap items-center gap-4">
+            <FormControl className="flex-1">
+              <InputLabel id="demo-simple-printable-helper-label">
+                Printable
+              </InputLabel>
+              <Select
+                className="w-full"
+                labelId="demo-simple-printable-helper-label"
+                id="demo-simple-printable-helper"
+                value={printable}
+                multiple={true}
+                label="Printable"
+                onChange={printableChange}
+                renderValue={(selected) => (
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} />
+                    ))}
+                  </Box>
+                )}
+              >
+                {Object.keys(printables).reduce((acc, header) => {
+                  // Push ListSubheader first
+                  acc.push(
+                    <ListSubheader key={`header_${header}`}>
+                      {header}
+                    </ListSubheader>
+                  );
+                  // Push MenuItems for the current header
+                  acc.push(
+                    ...printables[header].map((print, index) => (
+                      <MenuItem key={`print_${header}_${index}`} value={print}>
+                        {print}
+                      </MenuItem>
+                    ))
+                  );
+                  return acc;
+                }, [])}
+              </Select>
+            </FormControl>
             <FormControl className="flex-1">
               <InputLabel id="demo-simple-select-helper-label">
                 Radiologie
@@ -147,7 +264,7 @@ const RadioPage = () => {
               <AddIcon />
             </Button>
           </Box>
-          <Box className="w-full">
+          <Box className="w-full flex flex-col gap-2">
             <TableContainer
               component={Paper}
               elevation={0}
@@ -156,7 +273,7 @@ const RadioPage = () => {
               <Table sx={{ minWidth: 650 }} aria-label="simple table">
                 <TableHead className="bg-gray-200">
                   <TableRow>
-                    <TableCell>Operation</TableCell>
+                    <TableCell className="min-w-[400px]">Operation</TableCell>
                     <TableCell width="300px">Prix</TableCell>
                     <TableCell align="center" width="120px">
                       Action
@@ -166,8 +283,8 @@ const RadioPage = () => {
                 <TableBody>
                   {fields.map((carry, index) => (
                     <TableRow key={index} className="border-t border-gray-300">
-                      <TableCell>
-                        <FormControl className="w-full md:flex-1" size="medium">
+                      <TableCell className="min-w-[400px]">
+                        <FormControl className="w-full" size="medium">
                           <InputLabel id={`rows.${index}.name.label`}>
                             {carry.type}
                           </InputLabel>
@@ -232,7 +349,44 @@ const RadioPage = () => {
             </Box>
           </Box>
         </Box>
+        <Box className="flex">
+          <Button
+            type="submit"
+            variant="contained"
+            className="w-full md:w-max !px-10 !py-3 rounded-lg !ms-auto"
+          >
+            Enregistrer
+          </Button>
+        </Box>
       </Box>
+      <div
+        id="page"
+        className="hidden w-full flex-col gap-4 bg-white rounded-sm"
+      >
+        <div className="w-full flex flex-col gap-6">
+          <div className="w-full flex gap-4 items-center flex-col">
+            <p className="font-semibold">
+              Fait a beni mellal Le {FormattedDate[0]}/{FormattedDate[1]}/
+              {FormattedDate[2]}
+            </p>
+            {/* <p className="font-semibold">
+              Nom & Prenom: {row?.nom}
+              {row?.prenom}
+            </p> */}
+          </div>
+          <div className="w-full flex flex-col gap-4">
+            <div className="w-full flex flex-col gap-2">
+              {printable.map((details: any, index: number) => (
+                <div key={index}>
+                  <h3 className="font-bold">
+                    {index + 1}- {details}
+                  </h3>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </Paper>
   );
 };

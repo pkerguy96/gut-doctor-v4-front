@@ -24,6 +24,11 @@ import AddIcon from "@mui/icons-material/Add";
 import { useState } from "react";
 import Chip from "@mui/material/Chip";
 import OutlinedInput from "@mui/material/OutlinedInput";
+import addGlobal from "../../hooks/addGlobal";
+import { xrayApiClient, XrayProps } from "../../services/XrayService";
+import { useSnackbarStore } from "../../zustand/useSnackbarStore";
+import { useNavigate } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 
 function $tempkate(opts: any) {
   const { lang, dir, size, margin, css, page } = opts;
@@ -73,37 +78,22 @@ const MenuProps = {
 
 const data = {
   échographie: [
-    { name: "Échographie abdominale", price: 200 },
-    { name: "Échographie pelvienne", price: 250 },
-    { name: "Échographie thyroïdienne", price: 180 },
+    { name: "Abdomino pelvienne", price: 200 },
+    { name: "Scrotale", price: 250 },
   ],
-  exploration: [
-    { name: "Exploration fonctionnelle rénale", price: 300 },
-    { name: "Exploration cardiaque", price: 400 },
-    { name: "Exploration pulmonaire", price: 350 },
-  ],
-  endoscopie: [
-    { name: "Endoscopie gastrique", price: 500 },
-    { name: "Endoscopie colique", price: 600 },
-    { name: "Endoscopie bronchique", price: 550 },
-  ],
-  débimetrie: [
-    { name: "Débimetrie urinaire standard", price: 150 },
-    { name: "Débimetrie avec rétention", price: 180 },
-  ],
+
   Cystoscopie: [
-    { name: "Cystoscopie diagnostique", price: 700 },
-    { name: "Cystoscopie opératoire", price: 1200 },
+    { name: "Exploration", price: 700 },
+    { name: "Ablation de sonde jj", price: 1200 },
   ],
   Gestes: [
-    { name: "Pose de sonde urinaire", price: 300 },
-    { name: "Injection intraveineuse", price: 200 },
-    { name: "Ponction rénale", price: 1000 },
+    { name: "Biopsie prostatique", price: 300 },
+    { name: "dilatation au béniquet", price: 200 },
   ],
   Urgences: [
-    { name: "Traumatologie urinaire", price: 800 },
-    { name: "Hématurie aiguë", price: 600 },
-    { name: "Colique néphrétique", price: 750 },
+    { name: "RA sondage vésicale", price: 800 },
+    { name: "Hématurie sondage à 03 voies", price: 600 },
+    { name: "CN / PNA injection IM,IV,VV", price: 750 },
   ],
 };
 
@@ -117,16 +107,21 @@ const printables = {
   ],
 };
 
-const RadioPage = () => {
+const RadioPage = ({ onNext }) => {
   const [radiology, setRadiology] = useState("");
-  const [printable, setPrintable] = useState([]);
-
+  const [printable, setPrintable] = useState<string[]>([]);
+  const navigate = useNavigate();
+  const { showSnackbar } = useSnackbarStore();
+  const queryClient = useQueryClient();
+  const queryParams = new URLSearchParams(location.search);
+  const patient_id = queryParams.get("id");
+  const addMutation = addGlobal({} as XrayProps, xrayApiClient, undefined);
   const radiologyChange = (event: SelectChangeEvent) => {
     setRadiology(event.target.value);
   };
 
-  const printableChange = (event: SelectChangeEvent) => {
-    setPrintable(event.target.value);
+  const printableChange = (event: SelectChangeEvent<string[]>) => {
+    setPrintable(event.target.value as string[]);
   };
 
   const [fields, setFields] = useState([]);
@@ -164,12 +159,37 @@ const RadioPage = () => {
     setFields(newRows);
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    console.log("====================================");
-    console.log(fields, printable);
-    console.log("====================================");
-    Print("#page", () => {});
+    const formatedxrays = [...fields].filter((carry) => carry.name);
+
+    if (!formatedxrays.length) {
+      showSnackbar("Veuillez choisir un type de radio", "error");
+      return;
+    }
+
+    const formatedData: any = {
+      patient_id: patient_id,
+      xrays: formatedxrays,
+    };
+
+    await addMutation.mutateAsync(formatedData, {
+      onSuccess: (data: any) => {
+        const operationId = data.data;
+
+        navigate(`?id=${patient_id}&operation_id=${operationId}`, {
+          replace: true,
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["Waitinglist"],
+          exact: false,
+        });
+        onNext();
+      },
+      onError: (error) => {
+        console.log(error);
+      },
+    });
   };
 
   const FormattedDate = new Date().toISOString().split("T")[0].split("-");
@@ -195,7 +215,7 @@ const RadioPage = () => {
         </Box>
         <Box className="flex flex-col items-center gap-6 flex-wrap">
           <Box className="w-full flex flex-wrap items-center gap-4">
-            <FormControl className="flex-1">
+            {/*  <FormControl className="flex-1">
               <InputLabel id="demo-simple-printable-helper-label">
                 Printable
               </InputLabel>
@@ -233,7 +253,7 @@ const RadioPage = () => {
                   return acc;
                 }, [])}
               </Select>
-            </FormControl>
+            </FormControl> */}
             <FormControl className="flex-1">
               <InputLabel id="demo-simple-select-helper-label">
                 Radiologie
@@ -349,7 +369,16 @@ const RadioPage = () => {
             </Box>
           </Box>
         </Box>
-        <Box className="flex">
+        <Box className="flex justify-between flex-row mt-8 content-center">
+          <Button
+            className="w-full md:w-max !px-10 !py-3 rounded-lg "
+            variant="outlined"
+            onClick={() => {
+              onNext();
+            }}
+          >
+            <p className="text-sm ">Passer</p>
+          </Button>
           <Button
             type="submit"
             variant="contained"

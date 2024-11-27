@@ -152,7 +152,7 @@ const PatientsTable = () => {
               const patientId = s[0];
               // Check if the click was on the "Patient Info" button
               if (e.target.closest(".btn-patient-info")) {
-                navigate(`/Patients/operations`);
+                navigate(`/Patients/operations/?id=${s[0]}`);
                 return;
               }
 

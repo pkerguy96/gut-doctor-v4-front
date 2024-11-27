@@ -28,7 +28,7 @@ import ChangePassword from "./pages/ChangePassword";
 import SettingsPage from "./pages/SettingsPage";
 import KpiSettings from "./components/Settings/KpiSettings";
 import OperationPayementStatus from "./components/OperationPayementStatus";
-import OperationParentPage from "./pages/OperationPages/OperationParentPage";
+
 import DebtPage from "./pages/DebtPage";
 import OperationsListSettings from "./components/Settings/OperationsListSettings";
 import PermissionsSettings from "./components/Settings/PermissionsSettings";
@@ -52,6 +52,7 @@ import AddOutsourceOperation from "./pages/AddForms/AddOutsourceOperation";
 import OutsourceOperation from "./pages/OutsourceOperation";
 import ComingSoon from "./components/ComingSoon";
 import RadioPage from "./pages/OperationPagesUpdated/radioPage";
+import ParentOperationPage from "./pages/OperationPagesUpdated/ParentOperationPage";
 
 const router = createBrowserRouter([
   {
@@ -89,16 +90,8 @@ const router = createBrowserRouter([
         element: <PatientsPage />,
         children: [
           {
-            path: "Operate/:id/:age?",
-            element: <OperationParentPage />,
-          },
-          {
-            path: "Xray",
-            element: <OperationParentPage />,
-          },
-          {
             path: "operations",
-            element: <RadioPage />,
+            element: <ParentOperationPage />,
           },
           {
             path: "Details/:id",

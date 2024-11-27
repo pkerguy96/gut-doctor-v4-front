@@ -199,7 +199,7 @@ const VisiteValidation = ({ onNext }) => {
           }
         );
       } else {
-        const formData = { 
+        const formData = {
           patient_id: Number(patient_id),
           treatment_isdone: isdone ?? 1,
           ...data,
